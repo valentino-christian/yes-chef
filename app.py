@@ -33,17 +33,23 @@ class HFInferenceEmbeddings(Embeddings):
 
 # Custom LLM using HuggingFace Inference API
 class HFInferenceLLM(LLM):
-    client: Any
+    client: Any = None
     model: str
     temperature: float = 0.7
     max_tokens: int = 512
 
-    def __init__(self, api_key: str, model: str, temperature: float = 0.7, max_tokens: int = 512):
-        super().__init__()
-        self.client = InferenceClient(token=api_key)
-        self.model = model
-        self.temperature = temperature
-        self.max_tokens = max_tokens
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, api_key: str, model: str, temperature: float = 0.7, max_tokens: int = 512, **kwargs):
+        client = InferenceClient(token=api_key)
+        super().__init__(
+            client=client,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs
+        )
 
     @property
     def _llm_type(self) -> str:
