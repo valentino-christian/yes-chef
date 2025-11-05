@@ -1,11 +1,12 @@
 import os
 import traceback
-from typing import List
+from typing import List, Any, Optional
 from fastapi import FastAPI
 from langchain_community.llms import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import Chroma
 from langchain.embeddings.base import Embeddings
+from langchain.llms.base import LLM
 from huggingface_hub import InferenceClient
 import chromadb
 import uvicorn
@@ -29,6 +30,34 @@ class HFInferenceEmbeddings(Embeddings):
 
     def embed_query(self, text: str) -> List[float]:
         return self.embed_documents([text])[0]
+
+# Custom LLM using HuggingFace Inference API
+class HFInferenceLLM(LLM):
+    client: Any
+    model: str
+    temperature: float = 0.7
+    max_tokens: int = 512
+
+    def __init__(self, api_key: str, model: str, temperature: float = 0.7, max_tokens: int = 512):
+        super().__init__()
+        self.client = InferenceClient(token=api_key)
+        self.model = model
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+    @property
+    def _llm_type(self) -> str:
+        return "huggingface_inference"
+
+    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+        response = self.client.text_generation(
+            prompt,
+            model=self.model,
+            max_new_tokens=self.max_tokens,
+            temperature=self.temperature,
+            return_full_text=False
+        )
+        return response
 
 vectordb = None
 qa_chain = None
@@ -65,14 +94,11 @@ async def lifespan(app: FastAPI):
     )
 
     print("🧠 Initializing LLM...")
-    llm = HuggingFaceEndpoint(
-        endpoint_url=f"https://router.huggingface.co/hf-inference/models/Qwen/Qwen3-4B-Instruct-2507-FP8",
-        huggingfacehub_api_token=HF_TOKEN,
-        task="text-generation",
-        model_kwargs={
-            "temperature": 0.7,
-            "max_new_tokens": 512,
-        }
+    llm = HFInferenceLLM(
+        api_key=HF_TOKEN,
+        model="Qwen/Qwen2.5-1.5B-Instruct",
+        temperature=0.7,
+        max_tokens=512
     )
 
     print("⛓️ Creating QA chain...")
