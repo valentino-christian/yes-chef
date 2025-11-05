@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment files (secrets should be in Cloud Run env vars)
+.env
+*.env
+
+# Google credentials (use Cloud Run service accounts instead)
+credentials.json
+token.json
+
+# Development/testing files
+get_recipes.py
+webpage_recipe_summarizer.py
+connection_test.py
+doc_test.py
+output.log
+embeddings.csv
+
+# Documentation
+*.md
+CLAUDE.md
+README.md
+
+# Other databases or temporary files
+*.sqlite
+*.db

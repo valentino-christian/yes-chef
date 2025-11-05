@@ -1,0 +1,15 @@
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# LangChain
+langchain==0.1.5
+langchain-community==0.0.16
+
+# Vector database and embeddings
+chromadb==0.4.22
+huggingface-hub==0.20.3
+
+# Environment variables
+python-dotenv==1.0.0
