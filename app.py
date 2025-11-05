@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from langchain_community.llms import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_community.vectorstores import Chroma
 import chromadb
 import uvicorn
@@ -25,7 +25,12 @@ async def lifespan(app: FastAPI):
 
     # ChromaDB bundled in Docker image (read-only)
     chroma_client = chromadb.PersistentClient(path="./recipes_db")
-    embedding_function = HuggingFaceEmbeddings(model_name="Qwen/Qwen3-Embedding-8B")
+
+    # Use HuggingFace Inference API (same as used to create embeddings)
+    embedding_function = HuggingFaceInferenceAPIEmbeddings(
+        api_key=HF_TOKEN,
+        model_name="Qwen/Qwen3-Embedding-8B"
+    )
 
     vectordb = Chroma(
         client=chroma_client,
