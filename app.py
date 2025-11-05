@@ -56,14 +56,14 @@ class HFInferenceLLM(LLM):
         return "huggingface_inference"
 
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        response = self.client.text_generation(
-            prompt,
+        # Use chat_completion for instruct models
+        response = self.client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
             model=self.model,
-            max_new_tokens=self.max_tokens,
-            temperature=self.temperature,
-            return_full_text=False
+            max_tokens=self.max_tokens,
+            temperature=self.temperature
         )
-        return response
+        return response.choices[0].message.content
 
 vectordb = None
 qa_chain = None
