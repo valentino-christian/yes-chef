@@ -20,7 +20,7 @@ class RecipeQuery(BaseModel):
 # Custom embedding function using HuggingFace Inference API (same as get_recipes.py)
 class HFInferenceEmbeddings(Embeddings):
     def __init__(self, api_key: str, model: str = "Qwen/Qwen3-Embedding-8B"):
-        self.client = InferenceClient(provider="auto", api_key=api_key)
+        self.client = InferenceClient(token=api_key)
         self.model = model
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
