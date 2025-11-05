@@ -52,8 +52,11 @@ async def lifespan(app: FastAPI):
     llm = HuggingFaceEndpoint(
         repo_id="Qwen/Qwen3-4B-Instruct-2507-FP8",
         huggingfacehub_api_token=HF_TOKEN,
-        temperature=0.7,
-        max_new_tokens=512,
+        task="text-generation",
+        model_kwargs={
+            "temperature": 0.7,
+            "max_new_tokens": 512,
+        }
     )
 
     print("⛓️ Creating QA chain...")
