@@ -1,10 +1,12 @@
 import os
 import traceback
+from typing import List
 from fastapi import FastAPI
 from langchain_community.llms import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_community.vectorstores import Chroma
+from langchain.embeddings.base import Embeddings
+from huggingface_hub import InferenceClient
 import chromadb
 import uvicorn
 from dotenv import load_dotenv
@@ -14,6 +16,19 @@ from fastapi import HTTPException
 
 class RecipeQuery(BaseModel):
     query: str
+
+# Custom embedding function using HuggingFace Inference API (same as get_recipes.py)
+class HFInferenceEmbeddings(Embeddings):
+    def __init__(self, api_key: str, model: str = "Qwen/Qwen3-Embedding-8B"):
+        self.client = InferenceClient(provider="auto", api_key=api_key)
+        self.model = model
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        embeddings = self.client.feature_extraction(texts, model=self.model)
+        return [vec.tolist() if hasattr(vec, 'tolist') else list(vec) for vec in embeddings]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self.embed_documents([text])[0]
 
 vectordb = None
 qa_chain = None
@@ -37,9 +52,9 @@ async def lifespan(app: FastAPI):
 
     # Use HuggingFace Inference API (same as used to create embeddings)
     print("🤗 Setting up HuggingFace embeddings...")
-    embedding_function = HuggingFaceInferenceAPIEmbeddings(
+    embedding_function = HFInferenceEmbeddings(
         api_key=HF_TOKEN,
-        model_name="Qwen/Qwen3-Embedding-8B"
+        model="Qwen/Qwen3-Embedding-8B"
     )
 
     print("🔍 Loading vector database...")
