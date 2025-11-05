@@ -20,29 +20,43 @@ qa_chain = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global vectordb, qa_chain
+    print("🚀 Starting application...")
+
     load_dotenv()
     HF_TOKEN = os.environ.get("HUGGINGFACE_API_TOKEN")
 
+    if not HF_TOKEN:
+        raise ValueError("HUGGINGFACE_API_TOKEN environment variable not set!")
+
+    print("✅ Environment variables loaded")
+
     # ChromaDB bundled in Docker image (read-only)
+    print("📂 Initializing ChromaDB...")
     chroma_client = chromadb.PersistentClient(path="./recipes_db")
 
     # Use HuggingFace Inference API (same as used to create embeddings)
+    print("🤗 Setting up HuggingFace embeddings...")
     embedding_function = HuggingFaceInferenceAPIEmbeddings(
         api_key=HF_TOKEN,
         model_name="Qwen/Qwen3-Embedding-8B"
     )
 
+    print("🔍 Loading vector database...")
     vectordb = Chroma(
         client=chroma_client,
         collection_name="recipe_text",
         embedding_function=embedding_function
     )
+
+    print("🧠 Initializing LLM...")
     llm = HuggingFaceEndpoint(
         repo_id="Qwen/Qwen3-4B-Instruct-2507-FP8",
         huggingfacehub_api_token=HF_TOKEN,
         temperature=0.7,
         max_new_tokens=512,
     )
+
+    print("⛓️ Creating QA chain...")
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -50,7 +64,10 @@ async def lifespan(app: FastAPI):
         return_source_documents=True
     )
 
+    print("✅ Application ready!")
     yield  # App runs between startup and shutdown
+
+    print("🛑 Shutting down...")
 
     vectordb = None
     qa_chain = None
