@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
 
     print("🧠 Initializing LLM...")
     llm = HuggingFaceEndpoint(
-        endpoint_url=f"https://api-inference.huggingface.co/models/Qwen/Qwen3-4B-Instruct-2507-FP8",
+        endpoint_url=f"https://router.huggingface.co/hf-inference/models/Qwen/Qwen3-4B-Instruct-2507-FP8",
         huggingfacehub_api_token=HF_TOKEN,
         task="text-generation",
         model_kwargs={
