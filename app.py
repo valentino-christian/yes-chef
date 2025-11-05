@@ -102,7 +102,7 @@ async def lifespan(app: FastAPI):
     print("🧠 Initializing LLM...")
     llm = HFInferenceLLM(
         api_key=HF_TOKEN,
-        model="Qwen/Qwen2.5-1.5B-Instruct",
+        model="mistralai/Mistral-7B-Instruct-v0.2",
         temperature=0.7,
         max_tokens=512
     )
