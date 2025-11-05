@@ -1,4 +1,5 @@
 import os
+import traceback
 from fastapi import FastAPI
 from langchain_community.llms import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
@@ -81,12 +82,23 @@ app = FastAPI(lifespan=lifespan)
 async def get_recipe_recommendation(request: RecipeQuery) -> dict:
     if qa_chain is None:
         raise HTTPException(status_code=503, detail="Service not ready")
-    
+
     try:
+        print(f"📥 Received query: {request.query}")
         response = qa_chain.invoke(request.query)
+        print(f"✅ Got response: {response}")
         return {"result": response["result"]}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+        error_details = {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc()
+        }
+        print(f"❌ Error occurred: {error_details}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error: {type(e).__name__}: {str(e) if str(e) else repr(e)}"
+        )
 
 @app.get("/health")
 async def health():
