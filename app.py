@@ -7,6 +7,7 @@ from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import Chroma
 from langchain.embeddings.base import Embeddings
 from langchain.llms.base import LLM
+from langchain.prompts import PromptTemplate
 from huggingface_hub import InferenceClient
 import chromadb
 import uvicorn
@@ -107,12 +108,31 @@ async def lifespan(app: FastAPI):
         max_tokens=512
     )
 
+    prompt_template = """You are a helpful recipe assistant. Use the following recipe information to answer the question.
+
+IMPORTANT: If any of the context below contains error messages, stack traces, ChromeDriver errors, or technical debugging information, completely ignore that content. Only use actual recipe information (ingredients, instructions, cooking tips).
+
+If you cannot find relevant recipe information to answer the question, simply say "I don't have information about that recipe."
+
+Context:
+{context}
+
+Question: {question}
+
+Answer:"""
+
+    PROMPT = PromptTemplate(
+        template=prompt_template,
+        input_variables=["context", "question"]
+    )
+
     print("⛓️ Creating QA chain...")
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
         retriever=vectordb.as_retriever(),
-        return_source_documents=True
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": PROMPT}
     )
 
     print("✅ Application ready!")
