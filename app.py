@@ -21,7 +21,7 @@ class RecipeQuery(BaseModel):
 
 # Custom embedding function using HuggingFace Inference API (same as get_recipes.py)
 class HFInferenceEmbeddings(Embeddings):
-    def __init__(self, api_key: str, model: str = "Qwen/Qwen3-Embedding-8B"):
+    def __init__(self, api_key: str, model: str = "sentence-transformers/all-MiniLM-L6-v2"):
         self.client = InferenceClient(token=api_key)
         self.model = model
 
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
     print("🤗 Setting up HuggingFace embeddings...")
     embedding_function = HFInferenceEmbeddings(
         api_key=HF_TOKEN,
-        model="Qwen/Qwen3-Embedding-8B"
+        model="sentence-transformers/all-MiniLM-L6-v2"
     )
 
     print("🔍 Loading vector database...")
