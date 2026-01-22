@@ -1,13 +1,12 @@
 import os
 import traceback
-from typing import List, Any, Optional
+from typing import List
 from fastapi import FastAPI
-from langchain_community.llms import HuggingFaceEndpoint
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import Chroma
 from langchain.embeddings.base import Embeddings
-from langchain.llms.base import LLM
 from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
 from huggingface_hub import InferenceClient
 import chromadb
 import uvicorn
@@ -32,39 +31,6 @@ class HFInferenceEmbeddings(Embeddings):
     def embed_query(self, text: str) -> List[float]:
         return self.embed_documents([text])[0]
 
-# Custom LLM using HuggingFace Inference API
-class HFInferenceLLM(LLM):
-    client: Any = None
-    model: str
-    temperature: float = 0.7
-    max_tokens: int = 512
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, api_key: str, model: str, temperature: float = 0.7, max_tokens: int = 512, **kwargs):
-        client = InferenceClient(token=api_key)
-        super().__init__(
-            client=client,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            **kwargs
-        )
-
-    @property
-    def _llm_type(self) -> str:
-        return "huggingface_inference"
-
-    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        # Use chat_completion for instruct models
-        response = self.client.chat_completion(
-            messages=[{"role": "user", "content": prompt}],
-            model=self.model,
-            max_tokens=self.max_tokens,
-            temperature=self.temperature
-        )
-        return response.choices[0].message.content
 
 vectordb = None
 qa_chain = None
@@ -76,9 +42,12 @@ async def lifespan(app: FastAPI):
 
     load_dotenv()
     HF_TOKEN = os.environ.get("HUGGINGFACE_API_TOKEN")
+    OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
     if not HF_TOKEN:
         raise ValueError("HUGGINGFACE_API_TOKEN environment variable not set!")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY environment variable not set!")
 
     print("✅ Environment variables loaded")
 
@@ -101,9 +70,9 @@ async def lifespan(app: FastAPI):
     )
 
     print("🧠 Initializing LLM...")
-    llm = HFInferenceLLM(
-        api_key=HF_TOKEN,
-        model="meta-llama/Llama-3.1-8B-Instruct",
+    llm = ChatOpenAI(
+        api_key=OPENAI_API_KEY,
+        model="gpt-4o-mini",
         temperature=0.7,
         max_tokens=512
     )
@@ -112,7 +81,11 @@ async def lifespan(app: FastAPI):
 
 IMPORTANT: If any of the context below contains error messages, stack traces, ChromeDriver errors, or technical debugging information, completely ignore that content. Only use actual recipe information (ingredients, instructions, cooking tips).
 
-If you cannot find relevant recipe information to answer the question, simply say "I don't have information about that recipe."
+When the user mentions ingredients they have available (e.g., "I have tomatoes and chicken"), look through the recipes in the context and suggest ones that use those ingredients. Explain which recipe(s) would work and why.
+
+When the user asks what they can make, recommend recipes from the context that best match their available ingredients or preferences.
+
+If none of the recipes in the context are relevant to the user's question or ingredients, say "I don't have a recipe that matches, but here's what I found:" and briefly describe the available recipes.
 
 Context:
 {context}
