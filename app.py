@@ -1,8 +1,8 @@
 import os
 import traceback
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI
-from langchain.chains import RetrievalQA
+from langchain.chains import ConversationalRetrievalChain
 from langchain_community.vectorstores import Chroma
 from langchain.embeddings.base import Embeddings
 from langchain.prompts import PromptTemplate
@@ -15,8 +15,13 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from fastapi import HTTPException
 
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
 class RecipeQuery(BaseModel):
     query: str
+    chat_history: Optional[List[ChatMessage]] = []
 
 # Custom embedding function using HuggingFace Inference API (same as get_recipes.py)
 class HFInferenceEmbeddings(Embeddings):
@@ -81,7 +86,7 @@ async def lifespan(app: FastAPI):
 
 IMPORTANT: If any of the context below contains error messages, stack traces, ChromeDriver errors, or technical debugging information, completely ignore that content. Only use actual recipe information (ingredients, instructions, cooking tips).
 
-When the user mentions ingredients they have available (e.g., "I have tomatoes and chicken"), look through the recipes in the context and suggest ones that use those ingredients. Explain which recipe(s) would work and why.
+When the user mentions ingredients they have available (e.g., "I have tomatoes and chicken"), look through the recipes in the context and suggest ones that use those ingredients. Explain which recipe(s) would work and why, and offer to provide the user with the recipe.
 
 When the user asks what they can make, recommend recipes from the context that best match their available ingredients or preferences.
 
@@ -100,12 +105,11 @@ Answer:"""
     )
 
     print("⛓️ Creating QA chain...")
-    qa_chain = RetrievalQA.from_chain_type(
+    qa_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
-        chain_type="stuff",
         retriever=vectordb.as_retriever(),
         return_source_documents=True,
-        chain_type_kwargs={"prompt": PROMPT}
+        combine_docs_chain_kwargs={"prompt": PROMPT}
     )
 
     print("✅ Application ready!")
@@ -125,9 +129,22 @@ async def get_recipe_recommendation(request: RecipeQuery) -> dict:
 
     try:
         print(f"📥 Received query: {request.query}")
-        response = qa_chain.invoke(request.query)
+
+        # Convert chat history to list of tuples (human, ai)
+        history_tuples = []
+        for i in range(0, len(request.chat_history) - 1, 2):
+            if request.chat_history[i].role == "user" and i + 1 < len(request.chat_history):
+                history_tuples.append((
+                    request.chat_history[i].content,
+                    request.chat_history[i + 1].content
+                ))
+
+        response = qa_chain.invoke({
+            "question": request.query,
+            "chat_history": history_tuples
+        })
         print(f"✅ Got response: {response}")
-        return {"result": response["result"]}
+        return {"result": response["answer"]}
     except Exception as e:
         error_details = {
             "error_type": type(e).__name__,
